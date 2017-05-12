@@ -40,15 +40,17 @@ $mock --copyin sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec /builddir/build/SP
 $mock --copyin sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec /builddir/build/SPECS
 $mock --copyin sogo.rpmmacros /builddir/build/SOURCES
 
+$mock --install python
+
 $mock --shell <<EOF
 su - mockbuild -c "cat build/SOURCES/sogo.rpmmacros >> .rpmmacros"
 su - mockbuild -c "rpmbuild -bs build/SPECS/sogo.spec"
 su - mockbuild -c "rpmbuild -bs build/SPECS/sope.spec"
 EOF
 
-$mock --copyout /builddir/build/SRPMS/sogo-${sogo_ver}-el7.el7.centos.src.rpm .
+$mock --copyout /builddir/build/SRPMS/sogo-${sogo_ver}-el7.el7.src.rpm .
 $mock --copyout /builddir/build/SRPMS/sope49-4.9-${sope_rel}.el7.1.src.rpm .
 
 $mock --rebuild libwbxml-0.11.3-4.fc24.src.rpm
 $mock --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
-$mock --rebuild sogo-${sogo_ver}-el7.el7.centos.src.rpm
+$mock --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
