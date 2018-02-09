@@ -1,0 +1,22 @@
+#!/bin/sh
+yum -y install epel-release wget rpm-build createrepo git vim
+yum -y install mock
+useradd -G mock mockbuild
+mkdir /result
+chown mockbuild:mock /result
+sed -i 's/buildsys-build/buildsys-build python/' /etc/mock/epel-7-x86_64.cfg
+sed -i '$ d' /etc/mock/epel-7-x86_64.cfg
+cat >> /etc/mock/epel-7-x86_64.cfg <<EOF
+[holding]
+baseurl=file:///result
+"""
+EOF
+su - mockbuild
+createrepo -d --update /result/
+#git clone https://github.com/gordonmessmer/build-sogo.git
+#git clone https://github.com/ggiesen/build-sogo.git
+git clone https://github.com/toddejohnson/build-sogo.git
+cd build-sogo/3/
+#vim build-sogo-3
+#sh build-sogo-3
+
