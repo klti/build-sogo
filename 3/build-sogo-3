@@ -1,25 +1,32 @@
 #!/bin/sh
 
-sogo_ver=3.2.6a
-sope_rel=20170126
+sogo_ver=3.2.10
+sope_rel=3.2.10
 
 mock="mock -r epel-7-x86_64 --macro-file=sogo.rpmmacros"
+resultdir="/result"
 
-wget https://dl.fedoraproject.org/pub/fedora/linux/releases/25/Everything/source/tree/Packages/l/libwbxml-0.11.3-4.fc24.src.rpm
-wget https://github.com/inverse-inc/sogo/archive/SOGo-${sogo_ver}.tar.gz
-wget https://github.com/inverse-inc/sope/archive/SOPE-${sogo_ver}.tar.gz
+[ -f libwbxml-0.11.3-4.fc24.src.rpm ] || wget https://dl.fedoraproject.org/pub/fedora/linux/releases/25/Everything/source/tree/Packages/l/libwbxml-0.11.3-4.fc24.src.rpm
+[ -f SOGo-${sogo_ver}.tar.gz ] || wget https://github.com/inverse-inc/sogo/archive/SOGo-${sogo_ver}.tar.gz
+[ -f SOPE-${sogo_ver}.tar.gz ] || wget https://github.com/inverse-inc/sope/archive/SOPE-${sogo_ver}.tar.gz
 
-tar xf SOGo-${sogo_ver}.tar.gz sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec
-tar xf SOPE-${sogo_ver}.tar.gz sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec
-
-pushd sogo-SOGo-${sogo_ver}
-patch -p1 < ../sogo-spec.patch
-popd
-pushd sope-SOPE-${sogo_ver}
-patch -p1 < ../sope-spec.patch
-popd
+if [  ! -f sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec ]
+then
+  tar xf SOGo-${sogo_ver}.tar.gz sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec
+  pushd sogo-SOGo-${sogo_ver}
+    patch -p1 < ../sogo-spec.patch
+  popd
+fi
+if [ ! -f sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec ]
+then
+  tar xf SOPE-${sogo_ver}.tar.gz sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec
+  pushd sope-SOPE-${sogo_ver}
+    patch -p1 < ../sope-spec.patch
+  popd
+fi
 
 cat > sogo.rpmmacros <<EOF
+%dist .el7
 %dist_suffix el7
 %sope_buildcount 1
 %sope_makeflags -b
@@ -43,6 +50,8 @@ $mock --copyin sogo.rpmmacros /builddir/build/SOURCES
 $mock --install python
 
 $mock --shell <<EOF
+chown root.root /builddir/build/SPECS/*
+chown root.root /builddir/build/SOURCES/*
 su - mockbuild -c "cat build/SOURCES/sogo.rpmmacros >> .rpmmacros"
 su - mockbuild -c "rpmbuild -bs build/SPECS/sogo.spec"
 su - mockbuild -c "rpmbuild -bs build/SPECS/sope.spec"
@@ -51,6 +60,8 @@ EOF
 $mock --copyout /builddir/build/SRPMS/sogo-${sogo_ver}-el7.el7.src.rpm .
 $mock --copyout /builddir/build/SRPMS/sope49-4.9-${sope_rel}.el7.1.src.rpm .
 
-$mock --rebuild libwbxml-0.11.3-4.fc24.src.rpm
-$mock --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
-$mock --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
+$mock --resultdir=${resultdir}  --rebuild  libwbxml-0.11.3-4.fc24.src.rpm
+$mock --resultdir=${resultdir} --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
+createrepo -d --update ${resultdir}
+$mock --install python
+$mock --resultdir=${resultdir} --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
