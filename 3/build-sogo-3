@@ -63,5 +63,5 @@ $mock --copyout /builddir/build/SRPMS/sope49-4.9-${sope_rel}.el7.1.src.rpm .
 $mock --resultdir=${resultdir}  --rebuild  libwbxml-0.11.3-4.fc24.src.rpm
 $mock --resultdir=${resultdir} --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
 createrepo -d --update ${resultdir}
-$mock --install python
 $mock --resultdir=${resultdir} --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
+createrepo -d --update ${resultdir}
