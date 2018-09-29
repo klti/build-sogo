@@ -1,12 +1,12 @@
 #!/bin/sh
 
-sogo_ver=4.0.0
-sope_rel=20180307
+sogo_ver=4.0.2
+sope_rel=20180824
 
 mock="mock -r epel-7-x86_64 --macro-file=sogo.rpmmacros"
 resultdir="/result"
 
-[ -f libwbxml-0.11.3-4.fc24.src.rpm ] || wget https://dl.fedoraproject.org/pub/fedora/linux/releases/25/Everything/source/tree/Packages/l/libwbxml-0.11.3-4.fc24.src.rpm
+[ -f libwbxml-0.11.6-4.fc29.src.rpm ] || wget https://kojipkgs.fedoraproject.org//packages/libwbxml/0.11.6/4.fc29/src/libwbxml-0.11.6-4.fc29.src.rpm
 [ -f SOGo-${sogo_ver}.tar.gz ] || wget https://github.com/inverse-inc/sogo/archive/SOGo-${sogo_ver}.tar.gz
 [ -f SOPE-${sogo_ver}.tar.gz ] || wget https://github.com/inverse-inc/sope/archive/SOPE-${sogo_ver}.tar.gz
 
@@ -23,6 +23,7 @@ then
   pushd sope-SOPE-${sogo_ver}
     patch -p1 < ../sope-spec.patch
   popd
+  sed -i 's/%{?el7:%define oracle_support 1}/%{?el7:%define oracle_support 0}/' sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec
 fi
 
 cat > sogo.rpmmacros <<EOF
@@ -60,7 +61,7 @@ EOF
 $mock --copyout /builddir/build/SRPMS/sogo-${sogo_ver}-el7.el7.src.rpm .
 $mock --copyout /builddir/build/SRPMS/sope49-4.9-${sope_rel}.el7.1.src.rpm .
 
-$mock --resultdir=${resultdir}  --rebuild  libwbxml-0.11.3-4.fc24.src.rpm
+$mock --resultdir=${resultdir} --rebuild libwbxml-0.11.6-4.fc29.src.rpm
 $mock --resultdir=${resultdir} --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
 createrepo -d --update ${resultdir}
 $mock --resultdir=${resultdir} --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
