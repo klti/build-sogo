@@ -1,18 +1,48 @@
 #!/bin/sh
 
-sogo_ver=4.0.2
-sope_rel=20180824
+set -e
+
+sogo_ver=4.0.8
+sope_rel=20190719
 
 mock="mock -r epel-7-x86_64 --macro-file=sogo.rpmmacros"
-resultdir="/result"
+
+resultdir="/tmp/result"
+mkdir -p "${resultdir}"
+chmod 777 "${resultdir}"
+createrepo -d --update ${resultdir}
+
+# add repo to host
+cp -a sogo-build.repo /etc/yum.repos.d/sogo-build.repo
+
+# ensure build repo availble in mock env
+if [[ $(grep sogo-build /etc/mock/epel-7-x86_64.cfg) ]]; then
+  echo "mock already has build repo"
+else
+  echo "adding build repo to mock config"
+  # removes trailing triple quote
+  content=$(sed '$ d' /etc/mock/default.cfg)
+  content+="
+
+"
+  content+=$(cat sogo-build.repo)
+  content+='
+"""'
+  echo "${content}" > /etc/mock/default.cfg
+fi
 
 [ -f libwbxml-0.11.6-4.fc29.src.rpm ] || wget https://kojipkgs.fedoraproject.org//packages/libwbxml/0.11.6/4.fc29/src/libwbxml-0.11.6-4.fc29.src.rpm
 [ -f SOGo-${sogo_ver}.tar.gz ] || wget https://github.com/inverse-inc/sogo/archive/SOGo-${sogo_ver}.tar.gz
 [ -f SOPE-${sogo_ver}.tar.gz ] || wget https://github.com/inverse-inc/sope/archive/SOPE-${sogo_ver}.tar.gz
 
+# clean old spec files before patching
+rm -rf "sogo-SOGo-${sogo_ver}"
+rm -rf "sope-SOPE-${sogo_ver}"
+
 if [  ! -f sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec ]
 then
   tar xf SOGo-${sogo_ver}.tar.gz sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec
+  cp -a sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec.upstream
   pushd sogo-SOGo-${sogo_ver}
     patch -p1 < ../sogo-spec.patch
   popd
@@ -20,6 +50,7 @@ fi
 if [ ! -f sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec ]
 then
   tar xf SOPE-${sogo_ver}.tar.gz sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec
+  cp -a sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec.upstream
   pushd sope-SOPE-${sogo_ver}
     patch -p1 < ../sope-spec.patch
   popd
@@ -49,6 +80,12 @@ $mock --copyin sogo-SOGo-${sogo_ver}/packaging/rhel/sogo.spec /builddir/build/SP
 $mock --copyin sope-SOPE-${sogo_ver}/packaging/rhel/sope.spec /builddir/build/SPECS
 $mock --copyin sogo.rpmmacros /builddir/build/SOURCES
 
+# create user/group needed by install script
+#$mock --shell <<EOF
+#groupadd -f -r sogo
+#/usr/sbin/useradd -d /var/lib/sogo -c "SOGo daemon" -s /sbin/nologin -M -r -g sogo sogo
+#EOF
+
 $mock --shell <<EOF
 chown root.root /builddir/build/SPECS/*
 chown root.root /builddir/build/SOURCES/*
@@ -58,11 +95,13 @@ su - mockbuild -c "rpmbuild -bs build/SPECS/sogo.spec"
 su - mockbuild -c "rpmbuild -bs build/SPECS/sope.spec"
 EOF
 
+
 $mock --copyout /builddir/build/SRPMS/sogo-${sogo_ver}-el7.el7.src.rpm .
 $mock --copyout /builddir/build/SRPMS/sope49-4.9-${sope_rel}.el7.1.src.rpm .
 
-$mock --resultdir=${resultdir} --rebuild libwbxml-0.11.6-4.fc29.src.rpm
-$mock --resultdir=${resultdir} --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
+$mock --resultdir=${resultdir} --no-clean --no-cleanup-after --rebuild libwbxml-0.11.6-4.fc29.src.rpm
+$mock --resultdir=${resultdir} --no-clean --no-cleanup-after --rebuild sope49-4.9-${sope_rel}.el7.1.src.rpm
 createrepo -d --update ${resultdir}
-$mock --resultdir=${resultdir} --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
+
+$mock --resultdir=${resultdir} --no-clean --no-cleanup-after --rebuild sogo-${sogo_ver}-el7.el7.src.rpm
 createrepo -d --update ${resultdir}
