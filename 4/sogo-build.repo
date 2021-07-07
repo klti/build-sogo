@@ -1,0 +1,5 @@
+[sogo-build]
+name=Centos $releasever - $basearch
+baseurl=file:///tmp/result/
+enabled=1
+gpgcheck=0
